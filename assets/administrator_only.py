@@ -173,10 +173,14 @@ class Administrator_only(commands.Cog):
         [country id]
         - `/op show country_list`で得られる数字を指定してください。
         """
-        if isinstance(id,int):
+        try:
+            id = int(id)
+        except:
+            await ctx.send('コマンドが間違っています。')
+        else:
             now_session.country_delete(id)
-        cfg.data_close()
-        await ctx.send('削除しました。')
+            cfg.data_close()
+            await ctx.send('削除しました。')
 
     @op.group()
     async def show(self,ctx):

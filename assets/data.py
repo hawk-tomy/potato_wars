@@ -71,13 +71,11 @@ class Country:
         self.members[id] ={'role':'normal'}
 
     def remove_member(self,member_id):
-        if member_id in self.members:
-            self.members.remove(member_id)
+        self.members = [m for m in self.members if m['id'] != member_id]
 
     def delete(self):
         self.deleted = True
-        for member_id in list(self.members.keys()):
-            self.remove_member(member_id)
+        self.members = []
 
     def return_dict(self):
         return {
