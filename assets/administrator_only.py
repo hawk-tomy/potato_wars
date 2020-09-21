@@ -7,19 +7,19 @@ import yaml
 from assets import myfunction as MF
 from assets import config as cfg
 from assets.config import config, data, now_session, now_session_cfg
-from assets.data import Session
 
 root = logging.getLogger('bot')
 logger = root.getChild('Administrator_only')
 
 class Administrator_only(commands.Cog):
     """
-    administrator only
+    管理者専用のコマンド群です。
+    discord上での国家作成等を行えます。
     """
     def __init__(self,bot):
         self.bot = bot
         self.off.update(aliases=list(config['data'].keys()))
-        logger.debug('loading success')
+        logger.debug('load extension success')
 
     async def cog_check(self,ctx):
         return MF.is_administrator(ctx)
@@ -27,7 +27,9 @@ class Administrator_only(commands.Cog):
     @commands.command()
     async def off(self,ctx):
         """
-        change mode
+        adminモード等を実装してます。
+        エイリアス表示されている単語がモードです。
+        offは通常モードに切り替えます。
         """
         tmp = ctx.message.content[len(ctx.prefix):]
         flag = True
@@ -48,9 +50,11 @@ class Administrator_only(commands.Cog):
     @commands.command()
     async def mcid_add(self,ctx,arg):
         """
-        add mcid for database
-        <send> : /mcid_add [nummber]
-        <return> : success or bad requests
+        申請されたmcidを追加します。
+        `/mcid_add [nummber]`
+        (基本的にはBOTが自動送信したメッセージからのコピペで使用します)
+        コマンドが間違っていると返った場合、大体はコピペミスです。
+        成功した場合、登録しましたと出ます。
         """
         try:
             arg = int(arg)
@@ -92,9 +96,12 @@ class Administrator_only(commands.Cog):
     @commands.command()
     async def mcid_ignore(self,ctx,arg):
         """
-        ignore mcid
-        <send> : /mcid_ignore [nummber]
-        <return> : success or bad requests
+        申請されたmcidを差し戻します。
+        `/mcid ignore [number]`
+        (このコマンドはBOTが自動送信した申請メッセージを却下する際に使用します。
+        command : となっている部分の最後の部分の数字を[number]に当てはめて使用してください。)
+        コマンドが間違っていると返った場合、大体は[number]のコピペミスです。
+        成功した場合、却下しましたと出ます。
         """
         try:
             arg = int(arg)
@@ -113,19 +120,96 @@ class Administrator_only(commands.Cog):
                 await ctx.send('コマンドが間違っています')
                 logger.warning(MF.userName_C('ignore mcid failed',ctx=ctx))
 
-    @commands.command()
-    @commands.is_owner()
-    async def create_session(self,ctx):
-        id = len(data['sessions'])
-        discord_id_list = MF.mcid_to_member_list()
-        guild = bot.get_guild(config['guild'])
-        member_list = [member.id for member in guild.members]
-        members = []
-        for discord_id in discord_id_list:
-            if discord_id in member_list:
-                members.append({'id':discord_id,'has_sub':False,'sub_id':None,'is_sub':False,'country':None})
-        country = []
-        data['sessions'].append(Session(**{'id':id,'country':country,'members':members}))
+    @commands.group()
+    async def op(self,ctx):
+        """
+        管理用コマンド群です。
+        """
+        if ctx.invoked_subcommand is None:
+            await ctx.send('sub command is not found.')
+
+    @op.group()
+    async def country(self,ctx):
+        """
+        国家管理用コマンド群です
+        """
+        if ctx.invoked_subcommand is None:
+            await ctx.send('sub command is not found')
+
+    @country.command()
+    async def create(self,ctx,name,head):
+        """
+        国家の手動作成です。
+        ※plugin連携がされていない場合マイクラ鯖内では作成されません。※
+        `/op country [name] [header]`
+        [name]
+        - 国家の名前を入れてください。
+        [header]
+        - 国家元首に当たるユーザーをメンションしてください。
+        """
+        header_id = ctx.message.mentions[0].id
+        if now_session.get_member_dict().get(header_id) is None:
+            await ctx.send('メンバーを指定してください。')
+        else:
+            header = now_session.get_member_by_id(header_id)
+            id_ = now_session.country_create(
+                name=name,
+                header=header_id,
+                roles={'header':header_id},
+                members=[
+                    {**header.return_dict(),**{'roles':'header'}},
+                ],
+                deleted=False,
+            )
+            now_session.get_member_by_id(header_id).set_country(id_,'header')
+            await ctx.send('作成に成功しました。')
+            cfg.data_close()
+
+    @country.command()
+    async def delete(self,ctx,id):
+        """
+        国家を削除します。
+        `/op country delete [country id]`
+        [country id]
+        - `/op show country_list`で得られる数字を指定してください。
+        """
+        if isinstance(id,int):
+            now_session.country_delete(id)
+        cfg.data_close()
+        await ctx.send('削除しました。')
+
+    @op.group()
+    async def show(self,ctx):
+        """
+        管理者向け情報表示コマンド群です。
+        """
+        if ctx.invoked_subcommand is None:
+            await ctx.send('sub command is not found')
+
+    @show.command()
+    async def more_info(self,ctx,*,arg):
+        """
+        指定国家の詳細情報を表示します。
+        `/op show more_info [id]`
+        [id]
+        - `/op show country_list`で得られる数字を指定してください。
+        ※現在は生データで表示されます。※
+        """
+        if arg.isdecimal():
+            arg = int(arg)
+            await ctx.send(f'```{pprint.pformat(now_session.get_country_by_id(arg),compact=True,width=40)}```')
+
+    @show.command()
+    async def country_list(self,ctx):
+        """
+        国家の一覧を表示します。
+        詳細情報を得るためのコマンド : 国家名
+        が表示されます。
+        """
+        format_string = '`/country show more_info {id}` : `{name}`'
+        data_list = [{'id':c.id,'name':c.name} for c in now_session.country if not c.deleted]
+        defalut_embed = discord.Embed(title='country list',description='詳細な情報は`/country show more_info [num]`で取得してください',color=14563384)
+        await MF.embed_paginator(ctx,format_string,data_list,defalut_embed,split_num=1)
 
 def setup(bot):
     return bot.add_cog(Administrator_only(bot))

@@ -27,6 +27,16 @@ def is_headder(ctx):
     return ctx.author.id in country_header_list
 
 
+def is_member(ctx):
+    m_dict = now_session.get_member_dict()
+    print(list(m_dict.keys()))
+    return ctx.message.author.id in m_dict.keys()
+
+
+def is_mcid_not_set(ctx):
+    return not ctx.message.author.id in data['mcid'].keys()
+
+
 def userName_M(*msg,message):
     return ''.join(msg) + ' - used_by: ' + message.author.name + ' _ ' + str(message.author.id)
 
@@ -219,6 +229,7 @@ async def McidGet(message):
             await message.channel.send("Bad request. Please retry.")
             return None
     else:
+        print(tmp)
         await message.channel.send("You can use A-Za-z0-9_ only.")
         return None
 

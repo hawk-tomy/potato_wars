@@ -23,14 +23,18 @@ with open('logging_config.yml','r',encoding='utf-8')as f:
 logger = logging.getLogger('bot')
 bot = commands.Bot(command_prefix= '/',help_command=Help())
 
-bot.mode_flag = False
+bot.load_extension('assets.owner_only')
 bot.load_extension('assets.administrator_only')
 bot.load_extension('assets.user_command')
+if config['test']:
+    bot.load_extension('assets.test_session_only')
 
 @bot.event
 async def on_ready():
     logger.debug('login success')
-    await bot.get_user(612641323631247370).send('起動しました。')
+    appinfo = await bot.application_info()
+    bot.owner_id = appinfo.owner.id
+    await bot.get_user(bot.owner_id).send('起動しました。')
 
 @bot.event
 async def on_member_join(member):
@@ -63,37 +67,24 @@ async def on_raw_reaction_remove(payload):
 
 @bot.command()
 @commands.is_owner()
-async def pkl_clear(ctx):
-    cfg.pkl_clear()
-    await ctx.send('done')
-
-@bot.command()
-async def ping(ctx):
-    '''
-    ping -> pong
-    '''
-    await ctx.send('pong')
-
-@bot.command()
-@commands.is_owner()
 async def kill(ctx):
     '''
-    kill this bot
+    kill
     '''
     logger.info('killing now...')
     cfg.file_close()
-    await bot.get_user(612641323631247370).send('killing now...')
+    await bot.get_user(bot.owner_id).send('killing now...')
     await sys.exit()
 
 @bot.command()
 @commands.is_owner()
 async def restart(ctx):
     '''
-    restart this bot
+    restart
     '''
     logger.info('restart now...')
     cfg.file_close()
-    await bot.get_user(612641323631247370).send('resatrting now...')
+    await bot.get_user(bot.owner_id).send('resatrting now...')
     os.execl(sys.executable, os.path.abspath(__file__), os.path.abspath(__file__))
 
 @bot.command()
@@ -102,10 +93,13 @@ async def reload(ctx):
     '''
     reload extension
     '''
-    await bot.get_user(612641323631247370).send('reloading now...')
+    await bot.get_user(bot.owner_id).send('reloading now...')
+    bot.reload_extension('assets.owner_only')
     bot.reload_extension('assets.administrator_only')
     bot.reload_extension('assets.user_command')
-    await bot.get_user(612641323631247370).send('reloading success')
+    if config['test']:
+        bot.reload_extension('assets.test_session_only')
+    await bot.get_user(bot.owner_id).send('reloading success')
     logger.info('reload succes')
 
 bot.run(TOKEN)
