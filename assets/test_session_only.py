@@ -27,10 +27,11 @@ class Test_session_only(commands.Cog):
     @commands.check(MF.is_member)
     async def test(self,ctx):
         """
-        公開テスト向けに使用可能なコマンド群です。
+        公開テスト向けに使用可能なコマンド群です。詳細は`/help test`
         """
         if ctx.invoked_subcommand is None:
-            await ctx.send('sub command is not found')
+            self.bot.help_command.context = ctx
+            await self.bot.help_command.send_group_help(ctx.command)
 
     @test.command()
     async def country_create(self,ctx,name):
@@ -95,7 +96,7 @@ class Test_session_only(commands.Cog):
                     'is_sub':False,
                     'country':None
                 })
-            await ctx.send('登録しました。')
+            await ctx.send('登録しました。\n実行可能なコマンドが増えました。`/help`を実行してください。')
 
 def setup(bot):
     return bot.add_cog(Test_session_only(bot))

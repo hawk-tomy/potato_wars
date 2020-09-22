@@ -126,7 +126,8 @@ class Administrator_only(commands.Cog):
         管理用コマンド群です。
         """
         if ctx.invoked_subcommand is None:
-            await ctx.send('sub command is not found.')
+            self.bot.help_command.context = ctx
+            await self.bot.help_command.send_group_help(ctx.command)
 
     @op.group()
     async def country(self,ctx):
@@ -134,7 +135,8 @@ class Administrator_only(commands.Cog):
         国家管理用コマンド群です
         """
         if ctx.invoked_subcommand is None:
-            await ctx.send('sub command is not found')
+            self.bot.help_command.context = ctx
+            await self.bot.help_command.send_group_help(ctx.command)
 
     @country.command()
     async def create(self,ctx,name,head):
@@ -188,7 +190,8 @@ class Administrator_only(commands.Cog):
         管理者向け情報表示コマンド群です。
         """
         if ctx.invoked_subcommand is None:
-            await ctx.send('sub command is not found')
+            self.bot.help_command.context = ctx
+            await self.bot.help_command.send_group_help(ctx.command)
 
     @show.command()
     async def more_info(self,ctx,*,arg):

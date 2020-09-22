@@ -32,7 +32,8 @@ class User_command(commands.Cog):
         `/country`でヘルプが表示されます。
         """
         if ctx.invoked_subcommand is None:
-            await ctx.send('spam')
+            self.bot.help_command.context = ctx
+            await self.bot.help_command.send_group_help(ctx.command)
 
     @country.command()
     async def show(self,ctx):
