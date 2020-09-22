@@ -138,34 +138,39 @@ def getLogger(name, saveName= 'mainnoname.log'):
 #getLogger('bot.myfunction','myfunction.log')
 
 async def embed_paginator(ctx,format_string,data_list=None,defalut_embed=Embed.Empty,split_num=10):
-    if data_list is None or len(data_list) == 0 or defalut_embed is Embed.Empty or type(split_num) is not int:
+    if data_list is None or defalut_embed is Embed.Empty or type(split_num) is not int:
         raise ValueError
         return None
-    else:
-        embed_dict = {}
-        if len(data_list) > split_num:
-            all_page_num = len(data_list) // split_num
-            for num in range(all_page_num):
-                embed_dict[num] = defalut_embed.copy()
-                embed_dict[num].set_footer(text=f'page:{num+1}/{all_page_num}')
-                temp = data_list[num*split_num:(num+1)*split_num]
-                temp = [format_string.format(**i) for i in temp]
-                embed_dict[num].add_field(name='––––––––––––––––––––––––––––––',value='\n'.join(temp),inline=True)
-            temp = await ctx.send(embed=embed_dict[0])
-            data_embed[temp.id] = embed_dict
-            cfg.data_embed_close()
-            await temp.add_reaction('\U000023ee')
-            await temp.add_reaction('\U000025c0')
-            await temp.add_reaction('\U000025b6')
-            await temp.add_reaction('\U000023ed')
-            return embed_dict
-        elif len(data_list) != 0:
-            embed_dict[0] = defalut_embed.copy()
-            temp = data_list[0:10]
+    embed_dict = {}
+    if len(data_list) > split_num:
+        all_page_num = len(data_list) // split_num
+        for num in range(all_page_num):
+            embed_dict[num] = defalut_embed.copy()
+            embed_dict[num].set_footer(text=f'page:{num+1}/{all_page_num}')
+            temp = data_list[num*split_num:(num+1)*split_num]
             temp = [format_string.format(**i) for i in temp]
-            embed_dict[0].add_field(name='––––––––––––––––––––––––––––––',value='\n'.join(temp),inline=True)
-            await ctx.send(embed=embed_dict[0])
-            return embed_dict
+            embed_dict[num].add_field(name='––––––––––––––––––––––––––––––',value='\n'.join(temp),inline=True)
+        temp = await ctx.send(embed=embed_dict[0])
+        data_embed[temp.id] = embed_dict
+        cfg.data_embed_close()
+        await temp.add_reaction('\U000023ee')
+        await temp.add_reaction('\U000025c0')
+        await temp.add_reaction('\U000025b6')
+        await temp.add_reaction('\U000023ed')
+        return embed_dict
+    elif len(data_list) != 0:
+        embed_dict[0] = defalut_embed.copy()
+        temp = data_list[0:10]
+        temp = [format_string.format(**i) for i in temp]
+        embed_dict[0].add_field(name='––––––––––––––––––––––––––––––',value='\n'.join(temp),inline=True)
+        await ctx.send(embed=embed_dict[0])
+        return embed_dict
+    else:
+        embed_dict[0] = defalut_embed.copy()
+        embed_dict[0].add_field(name='––––––––––––––––––––––––––––––',value='表示できる情報がありません',inline=True)
+        await ctx.send(embed=embed_dict[0])
+        return embed_dict
+
 
 async def reaction_add_or_remove(payload,bot):
         if payload.message_id in data_embed:
@@ -193,6 +198,7 @@ async def reaction_add_or_remove(payload,bot):
                 if num == len(data_embed[payload.message_id])-1:
                     return None
                 await temp.edit(embed=data_embed[payload.message_id][len(data_embed[payload.message_id])-1])
+
 
 async def McidSet(bot,message,data):
     McidData = await McidGet(message)
@@ -232,6 +238,7 @@ async def McidGet(message):
         print(tmp)
         await message.channel.send("You can use A-Za-z0-9_ only.")
         return None
+
 
 def mcid_to_member_list():
     return list(data['mcid'].keys())
