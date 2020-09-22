@@ -153,14 +153,13 @@ class Administrator_only(commands.Cog):
         if now_session.get_member_dict().get(header_id) is None:
             await ctx.send('メンバーを指定してください。')
         else:
-            header = now_session.get_member_by_id(header_id)
             id_ = now_session.country_create(
                 name=name,
                 header=header_id,
                 roles={'header':header_id},
-                members=[
-                    {**header.return_dict(),**{'roles':'header'}},
-                ],
+                members= {
+                    header_id:{'roles':'header'},
+                },
                 deleted=False,
             )
             now_session.get_member_by_id(header_id).set_country(id_,'header')

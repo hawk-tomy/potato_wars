@@ -31,7 +31,7 @@ class Country:
     id -> int
     name -> str
     header -> int(dicord_id)
-    members -> dict
+    members -> dict({'id':{'role':str}})
     deleted -> boolen
     """
     def __init__(self,**kwargs):
@@ -65,17 +65,17 @@ class Country:
     def __len__(self):
         return len(self.members)
 
-    def add_member(self,id):
-        if id in self.members:
+    def add_member(self,id_):
+        if id_ in self.members:
             return
-        self.members[id] ={'role':'normal'}
+        self.members[id_] ={'role':'normal'}
 
     def remove_member(self,member_id):
-        self.members = [m for m in self.members if m['id'] != member_id]
+        self.members = {id_:m for id_,m in self.members.items() if id_ != member_id}
 
     def delete(self):
         self.deleted = True
-        self.members = []
+        self.members = {}
 
     def return_dict(self):
         return {
@@ -118,12 +118,12 @@ class SessionMember(BaseMember):
             'country':self.country,
         }
 
-    def set_sub(self,id):
+    def set_sub(self,id_):
         self.has_sub = True
-        self.sub_id = id
+        self.sub_id = id_
 
-    def set_country(self,id,role):
-        self.country = {'id':id,'role':role}
+    def set_country(self,id_,role):
+        self.country = {'id':id_,'role':role}
 
     def remove_country(self):
         self.country = None
@@ -187,16 +187,16 @@ class Session:
     def get_country_dict(self):
         return {c.id: c for c in self.country if not c.deleted}
 
-    def get_country_by_id(self,id):
+    def get_country_by_id(self,id_):
         c = self.get_country_dict()
-        return c[id]
+        return c[id_]
 
     def get_member_dict(self):
         return {m.id: m for m in self.members}
 
-    def get_member_by_id(self,id):
+    def get_member_by_id(self,id_):
         m = self.get_member_dict()
-        return m[id]
+        return m[id_]
 
     def country_create(self,**kwargs):
         if set(kwargs.keys()) >= {'name','roles','members'}:

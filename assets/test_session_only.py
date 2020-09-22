@@ -43,18 +43,17 @@ class Test_session_only(commands.Cog):
         なおこの場合の国家元首は建国した本人です。
         """
         header_id = ctx.message.author.id
-        header = now_session.get_member_by_id(header_id)
         id_ = now_session.country_create(
             name=name,
             header=header_id,
             roles={'header':header_id},
-            members=[
-                {**header.return_dict(),**{'roles':'header'}},
-            ],
+            members= {
+                header_id:{'roles':'header'},
+            },
             deleted=False,
         )
         now_session.get_member_by_id(header_id).set_country(id_,'header')
-        await ctx.send('create success')
+        await ctx.send('作成に成功しました。')
         cfg.data_close()
 
     @commands.command()
