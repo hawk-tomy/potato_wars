@@ -215,7 +215,19 @@ class Administrator_only(commands.Cog):
         format_string = '`/country show more_info {id}` : `{name}`'
         data_list = [{'id':c.id,'name':c.name} for c in now_session.country if not c.deleted]
         defalut_embed = discord.Embed(title='country list',description='詳細な情報は`/country show more_info [num]`で取得してください',color=14563384)
-        await MF.embed_paginator(ctx,format_string,data_list,defalut_embed,split_num=1)
+        await MF.embed_paginator(ctx,format_string,data_list,defalut_embed,split_num=10)
+
+    @show.command()
+    async def mcid_list(self,ctx):
+        """
+        mcidの一覧を表示します。
+        discordのユーザーへのメンション：mcid
+        が表示されます。
+        """
+        format_string = '`{mcid: <20}` : {discord_id}'
+        data_list = [{'mcid':mc_ids['mcid'],'discord_id':f'<@!{discord_id}>'} for discord_id , mc_ids in data['mcid'].items()]
+        defalut_embed = discord.Embed(title='mcid list',description='mcid：メンションで表示されます。',color=14563384)
+        await MF.embed_paginator(ctx,format_string,data_list,defalut_embed,split_num=10)
 
 def setup(bot):
     return bot.add_cog(Administrator_only(bot))
