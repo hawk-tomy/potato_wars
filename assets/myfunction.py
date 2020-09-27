@@ -29,7 +29,6 @@ def is_header(ctx):
 
 def is_member(ctx):
     m_dict = now_session.get_member_dict()
-    print(list(m_dict.keys()))
     return ctx.message.author.id in m_dict.keys()
 
 

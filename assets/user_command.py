@@ -1,3 +1,4 @@
+import asyncio
 import pprint
 import logging
 
@@ -75,6 +76,33 @@ class User_command(commands.Cog):
         now_session.get_country_by_id(country_id).rename(arg)
         cfg.data_close()
         await ctx.send('名前の変更に成功しました。')
+
+    @country.command()
+    @commands.check(MF.is_header)
+    async def remove(self,ctx,*arg):
+        """
+        国家解体用コマンド。
+        `/country remove`
+        現在確認コマンドの実行で消去がなされます。
+        誤操作等での復帰は現状不可能です。
+        """
+        if arg:
+            return None
+        await ctx.send('この操作は取り消せません。本当に削除を行いたい場合は`/coutnry remove confilm`を実行してください。')
+        def remove_confirm(msg):
+            if msg.author.id == ctx.author.id and msg.channel.id == ctx.channel.id:
+                return msg.content == '/country remove confilm'
+            else:
+                return False
+        try:
+            await self.bot.wait_for('message',check=remove_confirm,timeout=60.0)
+        except asyncio.TimeoutError:
+            await ctx.send('削除をキャンセルしました。')
+        else:
+            country_id = now_session.get_member_by_id(ctx.author.id).country['id']
+            now_session.country_delete(country_id)
+            await ctx.send('削除しました。')
+            cfg.data_close()
 
 def setup(bot):
     return bot.add_cog(User_command(bot))
