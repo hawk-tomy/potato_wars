@@ -86,6 +86,9 @@ class Country:
             'header':self.header,
         }
 
+    def rename(self,name):
+        self.name = name
+
 class SessionMember(BaseMember):
     """
     id -> int

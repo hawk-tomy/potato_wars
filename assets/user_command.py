@@ -45,22 +45,36 @@ class User_command(commands.Cog):
         await ctx.send(str(now_session.get_country_by_id(c_id)))
 
     @country.command()
-    @commands.check(MF.is_headder)
+    @commands.check(MF.is_header)
     async def add(self,ctx, *, arg):
         """
         メンションで指定ユーザーを国家に追加する
-        `/country add [メンション]`
-        [メンション]
+        `/country add [mention]`
+        [mention]
         - サブアカウントは指定できません
         - 複数人をメンションすることで同時に指定できます
         """
         if now_session.get_member_by_id(ctx.author.id).is_sub:
-            await ctx.send('サブコマンドは指定できません')
+            await ctx.send('サブアカウントは指定できません')
         else:
             country_id = now_session.get_member_by_id(ctx.author.id).country['id']
             now_session.country_add_members(country_id,*[m.id for m in ctx.message.mentions])
             cfg.data_close()
             await ctx.send('追加しました。')
+
+    @country.command()
+    @commands.check(MF.is_header)
+    async def rename(self,ctx,*,arg):
+        """
+        国名の変更コマンド。
+        `/country rename [name]`
+        [name]
+        - 変更後の国家の名前を指定してください。
+        """
+        country_id = now_session.get_member_by_id(ctx.author.id).country['id']
+        now_session.get_country_by_id(country_id).rename(arg)
+        cfg.data_close()
+        await ctx.send('名前の変更に成功しました。')
 
 def setup(bot):
     return bot.add_cog(User_command(bot))

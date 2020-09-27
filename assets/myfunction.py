@@ -22,7 +22,7 @@ def is_administrator(ctx):
     return ctx.author.id in config['ID']
 
 
-def is_headder(ctx):
+def is_header(ctx):
     country_header_list = [c.header for c in now_session.country]
     return ctx.author.id in country_header_list
 
