@@ -205,7 +205,7 @@ async def McidSet(bot,message,data):
         await message.channel.send('再度入力してください。')
     else:
         data['Mcid_wait_member'].remove(message.author.id)
-        await message.channel.send(f'https://ja.namemc.com/profile/{McidData["name"]}\n仮登録しました。運営側担当者の確認が得られ次第サーバーに参加できます。次のBOTからのDMをお待ちください。')
+        await message.channel.send(f'https://ja.namemc.com/profile/{McidData["mcid"]}\n仮登録しました。運営側担当者の確認が得られ次第サーバーに参加できます。次のBOTからのDMをお待ちください。')
         channel = bot.get_channel(now_session_cfg['OPchannel'])
         prefix = await bot.get_prefix(message)
         send_message = await channel.send(f'discord user : {message.author.mention}\nMCID : {McidData["name"]}\ncommand : {prefix}mcid_add ')
