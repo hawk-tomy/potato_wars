@@ -241,3 +241,7 @@ async def McidGet(message):
 
 def mcid_to_member_list():
     return list(data['mcid'].keys())
+
+
+def return_uuid_dcit():
+    return {v['uuid']:{'discord_id':k,'mcid':v['mcid']} for k,v in data['mcid'].items()}
