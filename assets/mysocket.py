@@ -4,8 +4,32 @@ import socket
 import threading
 import traceback
 
+import discord
+from discord.ext import commands,tasks
+
 from assets import myfunction as MF
 from assets.config import config, now_session
+
+class MySocket(commands.Cog):
+    def __init__(self, bot):
+        self.bot= bot
+        self.first = True
+
+    @tasks.loop(seconds=1.0)
+    async def receive_function(self):
+        pass
+
+    @receive_function.before_loop
+    async def before_receive_function(self):
+        pass
+
+    @tasks.loop(hours=6)
+    async def re_conection(self):
+        if self.first:
+            self.first = False
+        else:
+            pass
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 logging.getLogger('bot').getChild('socket')
@@ -13,11 +37,30 @@ receive_queue = queue.Queue()
 send_queue = queue.Queue()
 read_line = ''
 
-# 接続先
 host = config['host']
 port = config['port']
 sock.connect((host, port))
 waiting_id = []
+
+def white_list(receive_data):
+    white_lists = []
+    for mcid in receive_data:
+        uuid = json.loads(receive_data['data'][mcid])['UUID']
+        mcid_uuid = (mcid, uuid)
+        white_lists.append(mcid_uuid)
+    return white_lists
+
+def white_list_add(receive_data):
+    pass
+
+def serverinfo(receive_data):
+    return json.loads(receive_data)['data']
+
+send_function_dict = {
+    'whitelist':white_list,
+    'whitelist_add':white_list_add,
+    'serverinfo':serverinfo,
+}
 
 def country_create(receive_data):
     receive_data['data']['country'] = json.loads(receive_data['data']['country'])
@@ -31,21 +74,21 @@ def country_create(receive_data):
         'id':country_id,
     }
     now_session.country_create(**country_data)
-    return receive_data,country_id
+    return {'country_id':country_id}
 
 def country_delete(receive_data):
     receive_data['data']['country'] = json.loads(receive_data['data']['country'])
     country_id = receive_data['data']['country']['tag'][3:]
     now_session.country_delete(coutnry_id)
-    return receive_data,country_id
+    return {'country_id':country_id}
 
 def country_change_name(receive_data):
     receive_data['data']['country'] = json.loads(receive_data['data']['country'])
     country_id = receive_data['data']['country']['tag'][3:]
     name = receive_data['data']['country']['name']
     nick_name = receive_data['data']['country']['nickname']
-    now_session.get_country_by_id(country_id).rename(name.nick_name)
-    return receive_data,country_id
+    now_session.get_country_by_id(country_id).rename(name,nick_name)
+    return {'country_id':country_id,'name':name,'nick_name':nick_name}
 
 def country_member_add(receive_data):
     receive_data['data']['country'] = json.loads(receive_data['data']['country'])
@@ -53,17 +96,23 @@ def country_member_add(receive_data):
     b_m = now_session.get_country_by_id(country_id).members.keys()
     add_member = [p_m  for p_m in receive_data['data']['country']['member'] if p_m not in b_m]
     now_session.country_add_members(country_id,**addmember)
-    return receive_data,country_id
+    return {'country_id':country_id,'members':add_member}
 
 def country_member_remove(receive_data):
     receive_data['data']['country'] = json.loads(receive_data['data']['country'])
     country_id = receive_data['data']['country']['tag'][3:]
     p_m = receive_data['data']['country']['member']
-    remove_member = [ b_m for b_m in now_session.get_country_by_id(country_id).members.keys() if b_m not in p_m]
-    now_session.country_remove_members(country_id,**remove_member)
-    return receive_data,country_id
+    remove_members = [ b_m for b_m in now_session.get_country_by_id(country_id).members.keys() if b_m not in p_m]
+    now_session.country_remove_members(country_id,**remove_members)
+    return {'country_id':country_id,'members':remove_members}
 
-function_dict = {'create':country_create,'deleteCountry':country_delete,'addmember':country_member_add,'removemember':country_member_remove,'cangename':country_change_name}
+receive_function_dict = {
+    'create':country_create,
+    'deleteCountry':country_delete,
+    'addmember':country_member_add,
+    'removemember':country_member_remove,
+    'cangename':country_change_name,
+}
 
 def switcher(receive_str):
     receive_str_list = receive_str.split('&')
@@ -71,10 +120,17 @@ def switcher(receive_str):
     raw_data = '&'.join(receive_str_list[1:])
     receive_data =json.loads(raw_data)
     if receive_data['id']:
-        return_receive = False
+        return_receive = send_function_dict[receive_data['type']](receive_data)
     else:
-        return_receive = function_dict[receive_data['type']](receive_data)
-    receive_queue.put(return_receive)
+        return_receive = receive_function_dict[receive_data['type']](receive_data)
+    receive_queue.put(
+        (
+            receive_data['id'],
+            receive_data['type'],
+            return_receive,
+            receive_data,
+        )
+    )
 
 def Receive_Handler(sock):
     read_line = ''
