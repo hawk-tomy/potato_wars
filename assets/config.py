@@ -16,6 +16,7 @@ if data['sessions']:
     now_session = Session(**data['sessions'][config['now_session_id']])
     pprint(now_session)
     now_session_cfg = config['sessions'][config['now_session_id']]
+socketRequestFunc = {}
 
 def return_dict():
     data['sessions'][config['now_session_id']] = now_session.return_dict()

@@ -7,7 +7,7 @@ import requests
 import yaml
 
 from assets import config as cfg
-from assets.config import config, data, data_embed, now_session,now_session_cfg
+from assets.config import config, data, data_embed, now_session, now_session_cfg
 
 logger = logging.getLogger('bot').getChild('myfunction')
 
@@ -22,9 +22,18 @@ def is_administrator(ctx):
     return ctx.author.id in config['ID']
 
 
-def is_headder(ctx):
+def is_header(ctx):
     country_header_list = [c.header for c in now_session.country]
     return ctx.author.id in country_header_list
+
+
+def is_member(ctx):
+    m_dict = now_session.get_member_dict()
+    return ctx.message.author.id in m_dict.keys()
+
+
+def is_mcid_not_set(ctx):
+    return not ctx.message.author.id in data['mcid'].keys()
 
 
 def userName_M(*msg,message):
@@ -128,34 +137,39 @@ def getLogger(name, saveName= 'mainnoname.log'):
 #getLogger('bot.myfunction','myfunction.log')
 
 async def embed_paginator(ctx,format_string,data_list=None,defalut_embed=Embed.Empty,split_num=10):
-    if data_list is None or len(data_list) == 0 or defalut_embed is Embed.Empty or type(split_num) is not int:
+    if data_list is None or defalut_embed is Embed.Empty or type(split_num) is not int:
         raise ValueError
         return None
-    else:
-        embed_dict = {}
-        if len(data_list) > split_num:
-            all_page_num = len(data_list) // split_num
-            for num in range(all_page_num):
-                embed_dict[num] = defalut_embed.copy()
-                embed_dict[num].set_footer(text=f'page:{num+1}/{all_page_num}')
-                temp = data_list[num*split_num:(num+1)*split_num]
-                temp = [format_string.format(**i) for i in temp]
-                embed_dict[num].add_field(name='––––––––––––––––––––––––––––––',value='\n'.join(temp),inline=True)
-            temp = await ctx.send(embed=embed_dict[0])
-            data_embed[temp.id] = embed_dict
-            cfg.data_embed_close()
-            await temp.add_reaction('\U000023ee')
-            await temp.add_reaction('\U000025c0')
-            await temp.add_reaction('\U000025b6')
-            await temp.add_reaction('\U000023ed')
-            return embed_dict
-        elif len(data_list) != 0:
-            embed_dict[0] = defalut_embed.copy()
-            temp = data_list[0:10]
+    embed_dict = {}
+    if len(data_list) > split_num:
+        all_page_num = len(data_list) // split_num
+        for num in range(all_page_num):
+            embed_dict[num] = defalut_embed.copy()
+            embed_dict[num].set_footer(text=f'page:{num+1}/{all_page_num}')
+            temp = data_list[num*split_num:(num+1)*split_num]
             temp = [format_string.format(**i) for i in temp]
-            embed_dict[0].add_field(name='––––––––––––––––––––––––––––––',value='\n'.join(temp),inline=True)
-            await ctx.send(embed=embed_dict[0])
-            return embed_dict
+            embed_dict[num].add_field(name='––––––––––––––––––––––––––––––',value='\n'.join(temp),inline=True)
+        temp = await ctx.send(embed=embed_dict[0])
+        data_embed[temp.id] = embed_dict
+        cfg.data_embed_close()
+        await temp.add_reaction('\U000023ee')
+        await temp.add_reaction('\U000025c0')
+        await temp.add_reaction('\U000025b6')
+        await temp.add_reaction('\U000023ed')
+        return embed_dict
+    elif len(data_list) != 0:
+        embed_dict[0] = defalut_embed.copy()
+        temp = data_list[0:10]
+        temp = [format_string.format(**i) for i in temp]
+        embed_dict[0].add_field(name='––––––––––––––––––––––––––––––',value='\n'.join(temp),inline=True)
+        await ctx.send(embed=embed_dict[0])
+        return embed_dict
+    else:
+        embed_dict[0] = defalut_embed.copy()
+        embed_dict[0].add_field(name='––––––––––––––––––––––––––––––',value='表示できる情報がありません',inline=True)
+        await ctx.send(embed=embed_dict[0])
+        return embed_dict
+
 
 async def reaction_add_or_remove(payload,bot):
         if payload.message_id in data_embed:
@@ -184,13 +198,14 @@ async def reaction_add_or_remove(payload,bot):
                     return None
                 await temp.edit(embed=data_embed[payload.message_id][len(data_embed[payload.message_id])-1])
 
+
 async def McidSet(bot,message,data):
     McidData = await McidGet(message)
     if McidData is None:
         await message.channel.send('再度入力してください。')
     else:
         data['Mcid_wait_member'].remove(message.author.id)
-        await message.channel.send(f'https://ja.namemc.com/profile/{McidData["name"]}\n仮登録しました。運営側担当者の確認が得られ次第サーバーに参加できます。次のBOTからのDMをお待ちください。')
+        await message.channel.send(f'https://ja.namemc.com/profile/{McidData["mcid"]}\n仮登録しました。運営側担当者の確認が得られ次第サーバーに参加できます。次のBOTからのDMをお待ちください。')
         channel = bot.get_channel(now_session_cfg['OPchannel'])
         prefix = await bot.get_prefix(message)
         send_message = await channel.send(f'discord user : {message.author.mention}\nMCID : {McidData["name"]}\ncommand : {prefix}mcid_add ')
@@ -219,8 +234,74 @@ async def McidGet(message):
             await message.channel.send("Bad request. Please retry.")
             return None
     else:
+        print(tmp)
         await message.channel.send("You can use A-Za-z0-9_ only.")
         return None
 
+
 def mcid_to_member_list():
     return list(data['mcid'].keys())
+
+
+def return_uuid_dcit():
+    return {v['uuid']:{'discord_id':k,'mcid':v['mcid']} for k,v in data['mcid'].items()}
+
+async def country_create(receive,bot):
+    country_dict = now_session.get_country_by_id(receive[2]['country_id']).return_dict()
+    embed = (
+        discord.Embed(title='建国', description=f'**<@{country_dict["header"]}>が建国しました**', color=14563384)
+        .add_field(name='国家の名前', value=country_dict['name'])
+        .add_field(name='短い名前', value=country_dict['nick_name'])
+    )
+    channel = bot.get_channel(now_session_cfg['sendWebsocketEventChannelId'])
+    await channel.send(embed=embed)
+
+async def country_delete(receive,bot):
+    country_dict = now_session.get_all_country_by_id(receive[2]['country_id']).return_dict()
+    embed = discord.Embed(title='国家解体', description=f'**<@{country_dict["header"]}>が国家:{country_dict["name"]}を解体しました**', color=14563384)
+    channel = bot.get_channel(now_session_cfg['sendWebsocketEventChannelId'])
+    await channel.send(embed=embed)
+
+async def country_member_add(receive,bot):
+    country_dict = now_session.get_all_country_by_id(receive[2]['country_id']).return_dict()
+    members = '<@'+'>\n<@'.join(receive[2]['members'])+'>'
+    embed = (
+        discord.Embed(title='国家所属', description=f'**{country_dict["name"]}に所属したユーザー一覧です**', color=14563384)
+        .add_field(name='参加したユーザー一覧', value=members)
+    )
+    channel = bot.get_channel(now_session_cfg['sendWebsocketEventChannelId'])
+    await channel.send(embed=embed)
+
+async def country_member_remove(receive,bot):
+    country_dict = now_session.get_all_country_by_id(receive[2]['country_id']).return_dict()
+    members = '<@'+'>\n<@'.join(receive[2]['members'])+'>'
+    embed = (
+        discord.Embed(title='国家脱退', description=f'**{country_dict["name"]}から脱退したユーザー一覧です**', color=14563384)
+        .add_field(name='脱退したユーザー一覧', value=members)
+    )
+    channel = bot.get_channel(now_session_cfg['sendWebsocketEventChannelId'])
+    await channel.send(embed=embed)
+
+async def country_change_name(receive,bot):
+    country_dict = now_session.get_country_by_id(receive[2]['country_id']).return_dict()
+    embed = (
+        discord.Embed(title='国名変更', description=f'**<@{country_dict["header"]}>が国名を変更しました**', color=14563384)
+        .add_field(
+            name='国家の名前',
+            value=f'`{country_dict["before"]["name"]}` -> `{country_dict["after"]["name"]}`'
+            )
+        .add_field(
+            name='短い名前',
+            value=f'`{country_dict["before"]["nick_name"]}` -> `{country_dict["after"]["nick_name"]}`'
+            )
+    )
+    channel = bot.get_channel(now_session_cfg['sendWebsocketEventChannelId'])
+    await channel.send(embed=embed)
+
+socketEventFunction = {
+    'create':country_create,
+    'deleteCountry':country_delete,
+    'addmember':country_member_add,
+    'removemember':country_member_remove,
+    'cangename':country_change_name,
+}

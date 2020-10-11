@@ -31,13 +31,14 @@ class Country:
     id -> int
     name -> str
     header -> int(dicord_id)
-    members -> dict
+    members -> dict({'id':{'role':str}})
     deleted -> boolen
     """
     def __init__(self,**kwargs):
-        if set(kwargs.keys()) >= {'id','name','header','members','deleted'}:
+        if set(kwargs.keys()) >= {'id','name','header','members','deleted','nick_name'}:
             self.id = kwargs['id']
             self.name = kwargs['name']
+            self.nick_name = kwargs['nick_name']
             self.header = kwargs['header']
             self.members = kwargs['members']
             self.deleted = kwargs['deleted']
@@ -57,7 +58,7 @@ class Country:
         return f'Country(**{self.return_dict()})'
 
     def __str__(self):
-        return f'<Country name:{self.name},id:{self.id},members:{self.members},header:{self.header},deleted:{self.deleted}>'
+        return f'<Country name:{self.name},nick_name:{self.nick_name}id:{self.id},members:{self.members},header:{self.header},deleted:{self.deleted}>'
 
     def __bool__(self):
         return bool(self.members)
@@ -65,28 +66,31 @@ class Country:
     def __len__(self):
         return len(self.members)
 
-    def add_member(self,id):
-        if id in self.members:
+    def add_member(self,id_):
+        if id_ in self.members:
             return
-        self.members[id] ={'role':'normal'}
+        self.members[id_] ={'role':'normal'}
 
     def remove_member(self,member_id):
-        if member_id in self.members:
-            self.members.remove(member_id)
+        self.members = {id_:m for id_,m in self.members.items() if id_ != member_id}
 
     def delete(self):
         self.deleted = True
-        for member_id in list(self.members.keys()):
-            self.remove_member(member_id)
+        self.members = {}
 
     def return_dict(self):
         return {
             'id':self.id,
             'name':self.name,
+            'nick_name':self.nick_name,
             'deleted':self.deleted,
             'members':self.members,
             'header':self.header,
         }
+
+    def rename(self,name,nick_name):
+        self.name = name
+        self.nick_name = nick_name
 
 class SessionMember(BaseMember):
     """
@@ -120,12 +124,12 @@ class SessionMember(BaseMember):
             'country':self.country,
         }
 
-    def set_sub(self,id):
+    def set_sub(self,id_):
         self.has_sub = True
-        self.sub_id = id
+        self.sub_id = id_
 
-    def set_country(self,id,role):
-        self.country = {'id':id,'role':role}
+    def set_country(self,id_,role):
+        self.country = {'id':id_,'role':role}
 
     def remove_country(self):
         self.country = None
@@ -189,22 +193,27 @@ class Session:
     def get_country_dict(self):
         return {c.id: c for c in self.country if not c.deleted}
 
-    def get_country_by_id(self,id):
+    def get_all_country_dict(self):
+        return {c.id: c for c in self.country}
+
+    def get_country_by_id(self,id_):
         c = self.get_country_dict()
-        return c[id]
+        return c[id_]
+
+    def get_all_country_by_id(self,id_):
+        c = self.get_all_country_dict()
+        return c[id_]
 
     def get_member_dict(self):
         return {m.id: m for m in self.members}
 
-    def get_member_by_id(self,id):
+    def get_member_by_id(self,id_):
         m = self.get_member_dict()
-        return m[id]
+        return m[id_]
 
     def country_create(self,**kwargs):
-        if set(kwargs.keys()) >= {'name','roles','members'}:
-            id_ = len(self.country)
-            self.country.append(Country(**{'id':id_},**kwargs))
-            return id_
+        if set(kwargs.keys()) >= {'name','nick_name','members','id'}:
+            self.country.append(Country(**kwargs,**{'deleted':False}))
         else:
             raise TypeError('missing argment')
 
@@ -220,6 +229,11 @@ class Session:
         for member_id in members_id:
             self.get_country_by_id(country_id).add_member(member_id)
             self.get_member_by_id(member_id).set_country(country_id,'normal')
+
+    def country_remove_members(self,country_id,*members_id):
+        for member_id in members_id:
+            self.get_country_by_id(country_id).remove_member(member_id)
+            self.get_member_by_id(member_id).remove_country()
 
     def member_add(self,**kwargs):
         self.members.append(SessionMember(**kwargs))
