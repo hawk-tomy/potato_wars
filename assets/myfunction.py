@@ -7,7 +7,7 @@ import requests
 import yaml
 
 from assets import config as cfg
-from assets.config import config, data, data_embed, now_session,now_session_cfg
+from assets.config import config, data, data_embed, now_session, now_session_cfg
 
 logger = logging.getLogger('bot').getChild('myfunction')
 
@@ -245,3 +245,63 @@ def mcid_to_member_list():
 
 def return_uuid_dcit():
     return {v['uuid']:{'discord_id':k,'mcid':v['mcid']} for k,v in data['mcid'].items()}
+
+async def country_create(receive,bot):
+    country_dict = now_session.get_country_by_id(receive[2]['country_id']).return_dict()
+    embed = (
+        discord.Embed(title='建国', description=f'**<@{country_dict["header"]}>が建国しました**', color=14563384)
+        .add_field(name='国家の名前', value=country_dict['name'])
+        .add_field(name='短い名前', value=country_dict['nick_name'])
+    )
+    channel = bot.get_channel(now_session_cfg['sendWebsocketEventChannelId'])
+    await channel.send(embed=embed)
+
+async def country_delete(receive,bot):
+    country_dict = now_session.get_all_country_by_id(receive[2]['country_id']).return_dict()
+    embed = discord.Embed(title='国家解体', description=f'**<@{country_dict["header"]}>が国家:{country_dict["name"]}を解体しました**', color=14563384)
+    channel = bot.get_channel(now_session_cfg['sendWebsocketEventChannelId'])
+    await channel.send(embed=embed)
+
+async def country_member_add(receive,bot):
+    country_dict = now_session.get_all_country_by_id(receive[2]['country_id']).return_dict()
+    members = '<@'+'>\n<@'.join(receive[2]['members'])+'>'
+    embed = (
+        discord.Embed(title='国家所属', description=f'**{country_dict["name"]}に所属したユーザー一覧です**', color=14563384)
+        .add_field(name='参加したユーザー一覧', value=members)
+    )
+    channel = bot.get_channel(now_session_cfg['sendWebsocketEventChannelId'])
+    await channel.send(embed=embed)
+
+async def country_member_remove(receive,bot):
+    country_dict = now_session.get_all_country_by_id(receive[2]['country_id']).return_dict()
+    members = '<@'+'>\n<@'.join(receive[2]['members'])+'>'
+    embed = (
+        discord.Embed(title='国家脱退', description=f'**{country_dict["name"]}から脱退したユーザー一覧です**', color=14563384)
+        .add_field(name='脱退したユーザー一覧', value=members)
+    )
+    channel = bot.get_channel(now_session_cfg['sendWebsocketEventChannelId'])
+    await channel.send(embed=embed)
+
+async def country_change_name(receive,bot):
+    country_dict = now_session.get_country_by_id(receive[2]['country_id']).return_dict()
+    embed = (
+        discord.Embed(title='国名変更', description=f'**<@{country_dict["header"]}>が国名を変更しました**', color=14563384)
+        .add_field(
+            name='国家の名前',
+            value=f'`{country_dict["before"]["name"]}` -> `{country_dict["after"]["name"]}`'
+            )
+        .add_field(
+            name='短い名前',
+            value=f'`{country_dict["before"]["nick_name"]}` -> `{country_dict["after"]["nick_name"]}`'
+            )
+    )
+    channel = bot.get_channel(now_session_cfg['sendWebsocketEventChannelId'])
+    await channel.send(embed=embed)
+
+socketEventFunction = {
+    'create':country_create,
+    'deleteCountry':country_delete,
+    'addmember':country_member_add,
+    'removemember':country_member_remove,
+    'cangename':country_change_name,
+}

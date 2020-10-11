@@ -193,8 +193,15 @@ class Session:
     def get_country_dict(self):
         return {c.id: c for c in self.country if not c.deleted}
 
+    def get_all_country_dict(self):
+        return {c.id: c for c in self.country}
+
     def get_country_by_id(self,id_):
         c = self.get_country_dict()
+        return c[id_]
+
+    def get_all_country_by_id(self,id_):
+        c = self.get_all_country_dict()
         return c[id_]
 
     def get_member_dict(self):

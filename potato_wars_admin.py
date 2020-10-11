@@ -14,6 +14,7 @@ from assets import myfunction as MF
 from assets import Help
 from assets import config as cfg
 from assets.config import config, data, now_session, now_session_cfg
+from assets import mysocket
 
 with open('token','r',encoding='utf-8')as f:
     TOKEN = f.read()
@@ -26,6 +27,7 @@ bot = commands.Bot(command_prefix= '/',help_command=Help())
 bot.load_extension('assets.owner_only')
 bot.load_extension('assets.administrator_only')
 bot.load_extension('assets.user_command')
+bot.add_cog(mysocket.MySocket(bot))
 if config['test']:
     bot.load_extension('assets.test_session_only')
 
@@ -72,6 +74,8 @@ async def kill(ctx):
     kill
     '''
     logger.info('killing now...')
+    mysocket.send_queue.put({'server':'server','data':'close'})
+    mysocket.t2.join()
     cfg.file_close()
     await bot.get_user(bot.owner_id).send('killing now...')
     await sys.exit()
@@ -83,6 +87,8 @@ async def restart(ctx):
     restart
     '''
     logger.info('restart now...')
+    mysocket.send_queue.put({'server':'server','data':'close'})
+    mysocket.t2.join()
     cfg.file_close()
     await bot.get_user(bot.owner_id).send('resatrting now...')
     os.execl(sys.executable, os.path.abspath(__file__), os.path.abspath(__file__))

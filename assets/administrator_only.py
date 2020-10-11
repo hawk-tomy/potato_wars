@@ -1,3 +1,5 @@
+import json
+import pprint
 import logging
 
 import discord
@@ -6,7 +8,8 @@ import yaml
 
 from assets import myfunction as MF
 from assets import config as cfg
-from assets.config import config, data, now_session, now_session_cfg
+from assets.config import config, data, now_session, now_session_cfg, socketRequestFunc
+from assets.mysocket import send_queue
 
 root = logging.getLogger('bot')
 logger = root.getChild('Administrator_only')
@@ -73,6 +76,23 @@ class Administrator_only(commands.Cog):
                     'is_sub':False,
                     'country':None
                 })
+                async def whitelist_add_boolen(receive,more_data,bot):
+                    if not receive[2]['boolen']:
+                        channel = bot.get_channel(more_data['channel'])
+                        await channel.send('プラグインへの自動追加に失敗しました。手動で追加してください\n対象:`'+more_data['mcid']+'`')
+                        raise ConnectionError
+                socketRequestFunc[config['socket_id']]={
+                    'func':whitelist_add_boolen,
+                    'channel':ctx.channel.id,
+                    'mcid':data['mcid'][discord_id],
+                }
+                send_queue.put({
+                        'server':config['socket_send_account'],
+                        'data':'whitelist_add:'+data['mcid'][discord_id],
+                        'id':config['socket_id'],
+                    })
+                config['socket_id'] += 1
+                cfg.data_close()
                 await ctx.send('登録しました。',delete_after=10)
                 me = await ctx.channel.fetch_message(arg)
                 await ctx.message.delete()
@@ -84,7 +104,7 @@ class Administrator_only(commands.Cog):
                         member = i
                         break
                 await member.remove_roles(member.guild.get_role(now_session_cfg['role']))
-                channel = self.bot.get_channel(config['sendChannelId'])
+                channel = self.bot.get_channel(config['sendWelcomeChannelId'])
                 embed = discord.Embed(title=None,description='mcid記入待ちロールを外しました。こちらで発言できます。当サーバーへのご参加ありがとうございます！')
                 await channel.send(content=member.mention,embed=embed)
                 cfg.data_close()
@@ -138,7 +158,7 @@ class Administrator_only(commands.Cog):
             self.bot.help_command.context = ctx
             await self.bot.help_command.send_group_help(ctx.command)
 
-    @country.command()
+#    @country.command()
     async def create(self,ctx,name,head):
         """
         国家の手動作成です。
@@ -166,7 +186,7 @@ class Administrator_only(commands.Cog):
             await ctx.send('作成に成功しました。')
             cfg.data_close()
 
-    @country.command()
+#    @country.command()
     async def delete(self,ctx,id):
         """
         国家を削除します。
@@ -228,6 +248,31 @@ class Administrator_only(commands.Cog):
         data_list = [{'mcid':mc_ids['mcid'],'discord_id':f'<@!{discord_id}>'} for discord_id , mc_ids in data['mcid'].items()]
         defalut_embed = discord.Embed(title='mcid list',description='mcid：メンションで表示されます。',color=14563384)
         await MF.embed_paginator(ctx,format_string,data_list,defalut_embed,split_num=10)
+
+    @show.command()
+    async def server_info(self,ctx):
+        """
+        この鯖の情報を表示します。
+        ※現在は生データで表示されます※
+        """
+        async def server_info_result(receive,more_data,bot):
+            channel = bot.get_channel(more_data['channel'])
+            await channel.send(pprint.pformat(receive[2]))
+        socketRequestFunc[config['socket_id']]={
+            'func':server_info_result,
+            'channel':ctx.channel.id,
+        }
+        send_queue.put({
+                'server':config['socket_send_account'],
+                'data':json.dumps({
+                    'id':config['socket_id'],
+                    'request':'serverinfo',
+                    'list': [],
+                }),
+                'id':config['socket_id'],
+            })
+        config['socket_id'] += 1
+        cfg.data_close()
 
 def setup(bot):
     return bot.add_cog(Administrator_only(bot))
