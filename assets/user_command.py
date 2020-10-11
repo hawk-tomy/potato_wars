@@ -40,13 +40,13 @@ class User_command(commands.Cog):
     async def show(self,ctx):
         """
         自分の所属する国家の情報の表示
-        ※現在は生データで表示されます。※
+        ※現在は生データで表示されます※
         """
         c_id = now_session.get_member_by_id(ctx.message.author.id).country['id']
         await ctx.send(str(now_session.get_country_by_id(c_id)))
 
-    @country.command()
-    @commands.check(MF.is_header)
+#    @country.command()
+#    @commands.check(MF.is_header)
     async def add(self,ctx, *, arg):
         """
         メンションで指定ユーザーを国家に追加する
@@ -63,7 +63,7 @@ class User_command(commands.Cog):
             cfg.data_close()
             await ctx.send('追加しました。')
 
-    @country.command()
+#    @country.command()
     @commands.check(MF.is_header)
     async def rename(self,ctx,*,arg):
         """
@@ -77,7 +77,7 @@ class User_command(commands.Cog):
         cfg.data_close()
         await ctx.send('名前の変更に成功しました。')
 
-    @country.command()
+#    @country.command()
     @commands.check(MF.is_header)
     async def remove(self,ctx,*arg):
         """
