@@ -9,11 +9,12 @@ import discord
 from discord.ext import commands,tasks
 
 from assets import myfunction as MF
-from assets.config import config, now_session, socketRequestFunc
+from assets.config import config, now_session
 
 logger = logging.getLogger('bot').getChild('socket')
 receive_queue = queue.Queue()
 send_queue = queue.Queue()
+debug_queue = queue.Queue()
 read_line = ''
 
 host = config['host']
@@ -21,29 +22,6 @@ port = config['port']
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.connect((host, port))
 waiting_id = []
-
-class MySocket(commands.Cog):
-    def __init__(self, bot):
-        self.bot= bot
-
-    @tasks.loop(seconds=1.0)
-    async def receive_function(self):
-        if self.bot.is_ready:
-            if not receive_queue.empty():
-                receive = receive_queue.get()
-                if receive[0]:
-                    function_dict =  socketRequestFunc.get(receive[0],None)
-                    if function_dict is not None:
-                        await function_dict['func'](receive,socketRequestFunc[receive[0]],self.bot)
-                    else:
-                        logger.warning('Function Is Not Found\n'+receive)
-                else:
-                    await MF.socketEventFunction[receive[1]](receive,self.bot)
-
-    @tasks.loop(hours=6)
-    async def re_conection(self):
-        if self.bot.is_ready:
-            re_conect()
 
 def white_list(receive_data):
     white_lists = []
@@ -124,26 +102,32 @@ receive_function_dict = {
 }
 
 def switcher(receive_str):
+    receive_str_list = receive_str.split('&')
+    debug_queue.put(receive_str)
     if receive_str == 'server&account.request':
-        send_queue.put(json.dumps(config['socket_account']))
+#        send_queue.put({'server':None,'data':'close'})
+        send_queue.put({'server':None,'data':json.dumps(config['socket_account'])})
     elif receive_str == 'server&pass clear':
         logger.info('login success')
-    receive_str_list = receive_str.split('&')
-    server = receive_str_list[0]
-    raw_data = '&'.join(receive_str_list[1:])
-    receive_data =json.loads(raw_data)
-    if receive_data['id']:
-        return_receive = send_function_dict[receive_data['type']](receive_data)
+    elif not receive_str_list[1].startswith('{'):
+        pass
     else:
-        return_receive = receive_function_dict[receive_data['type']](receive_data)
-    receive_queue.put(
-        (
-            receive_data['id'],
-            receive_data['type'],
-            return_receive,
-            receive_data,
+        server = receive_str_list[0]
+        raw_data = '&'.join(receive_str_list[1:])
+        receive_data =json.loads(raw_data)
+        if receive_data['id']:
+            return_receive = send_function_dict[receive_data['type']](receive_data)
+        else:
+            return_receive = receive_function_dict[receive_data['type']](receive_data)
+            print(return_receive)
+        receive_queue.put(
+            (
+                receive_data['id'],
+                receive_data['type'],
+                return_receive,
+                receive_data,
+            )
         )
-    )
 
 def Receive_Handler(sock):
     read_line = ''
@@ -169,16 +153,19 @@ def Receive_Handler(sock):
 def Send_Handler(sock, send_queue):
     while True:
         Send_data = send_queue.get()
-        if Send_data['server'] != 'server':
-            waiting_id.append(Send_data['id'])
-        Send_data_str = f"{Send_data['server']}&{Send_data['data']}@"
+        if Send_data['server'] is not None:
+            if Send_data['server'] != 'server':
+                waiting_id.append(Send_data['id'])
+            Send_data_str = f"{Send_data['server']}&{Send_data['data']}@"
+        else:
+            Send_data_str = Send_data['data']+'@'
         logger.debug('send :'+Send_data_str)
         sock.send(Send_data_str.encode(encoding='utf-8'))
         if Send_data_str == 'server&close@':
             break
 
 t1 = threading.Thread(target = Send_Handler, args= (sock, send_queue))
-t2 = threading.Thread(target = Receive_Handler, args= sock)
+t2 = threading.Thread(target = Receive_Handler, args= (sock,))
 t1.start()
 t2.start()
 
@@ -187,6 +174,6 @@ def re_conect():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((host, port))
     t1 = threading.Thread(target = Send_Handler, args= (sock, send_queue))
-    t2 = threading.Thread(target = Receive_Handler, args= sock)
+    t2 = threading.Thread(target = Receive_Handler, args= (sock,))
     t1.start()
     t2.start()
